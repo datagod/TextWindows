@@ -275,6 +275,77 @@ def ErrorHandler(ErrorMessage, TraceMessage, AdditionalInfo):
     sys.exit('Goodbye for now...')
 
 
+def GoToSleep(TimeToSleep):
+    for i in range(0, (TimeToSleep * 10)):
+        PollKeyboard()
+        time.sleep(0.1)
+
+
+def PollKeyboard():
+    global stdscr
+    ReturnChar = ""
+    c = ""
+    curses.noecho()
+    try:
+        c = chr(stdscr.getch())
+    except Exception as ErrorMessage:
+        c = ""
+    if c != "":
+        OutputLine = "Key Pressed: " + c
+        ProcessKeypress(c)
+    return ReturnChar
+
+
+def ProcessKeypress(Key):
+  global stdscr
+  count  = 0
+
+  OutputLine = "KEYPRESS: [" + str(Key) + "]"
+  # c = clear screen
+  # i = get node info
+  # l = show system LOGS (dmesg)
+  # n = show all nodes in mesh
+  # p = pause
+  # q = quit
+  # r = reboot
+  # s = Send message
+  # T = test messages
+  
+
+    
+  if (Key == "p" or Key == " "):
+    PauseOutput = not (PauseOutput)
+    #if (PauseOutput == True):
+      #Window2.ScrollPrint("Pausing output",2)
+      #StatusWindow.WindowPrint(0,0,"** Output SLOW - press SPACE again to cancel **",1)
+      #PrintSleep = PrintSleep * 3
+
+    #else:
+      #Window2.ScrollPrint("Resuming output",2)
+      #StatusWindow.WindowPrint(0,0," ",3)
+      #PrintSleep = OldPrintSleep
+      #StatusWindow.ScrollPrint("",2)
+
+
+
+#  elif (Key == "i"):
+#    Window4.Clear()
+#    GetMyNodeInfo(interface)
+
+#  elif (Key == "l"):
+#    Pad1.Clear()
+#    DisplayLogs(0.01)
+
+#  elif (Key == "n"):
+#    Pad1.Clear()
+#    DisplayNodes(interface)
+
+#  elif (Key == "q"):
+#    FinalCleanup(stdscr)
+#    exit()
+
+
+
 def main(stdscr):
     # Initialization
     stdscr.clear()
@@ -293,23 +364,30 @@ def main(stdscr):
     curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
 
     # Create TextWindow and TextPad
-    window = TextWindow('ExampleWindow', 10, 40, 0, 0, 10, 40, 'Y', 2, 2)
-    window.ScrollPrint("Hello, World!", Color=3, TimeStamp=True)
+    #window = TextWindow('ExampleWindow', 10, 40, 0, 0, 10, 40, 'Y', 2, 2)
+    #window.ScrollPrint("Hello, World!", Color=3, TimeStamp=True)
 
-    pad = TextPad('ExamplePad', 100, 40, 12, 0, 20, 40, 'N', 2)
+    pad = TextPad('ExamplePad', 100, 40, 0, 0, 110, 50, 'N', 2)
     pad.PadPrint("This is a long text to be printed in a pad.", Color=4, TimeStamp=True)
     pad.PadPrint("Another line in the pad to show scrolling capability.", Color=5, TimeStamp=True)
 
     # Refresh custom windows/pads
-    window.refresh()
+    #window.refresh()
     pad.refresh()
+
+    Key = ''
 
     while True:
     
         # Handle other keys if necessary
-
+        ProcessKeypress(Key)
+        if (Key != ''):
+          ToPrint = "Key: " + Key
+          pad.PadPrint(ToPrint,Color=4, TimeStamp=True)
+        #window.ScrollPrint(Key, Color=3, TimeStamp=True)
         # Refresh custom windows/pads after handling input
-        window.refresh()
+        #window.refresh()
+
         pad.refresh()
 
     # No manual cleanup needed with curses.wrapper()
