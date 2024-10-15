@@ -159,10 +159,10 @@ def ProcessKeypress(c, pad):
             typed_text = typed_text[:-1]
 
         elif 0 <= c <= 255:
-            typed_text += chr(c)
+            typed_text = chr(c)
 
         # Display the currently typed text in the pad
-        pad.PadPrint(f"Typed so far: {typed_text}", Color=6)
+        pad.PadPrint(f"{typed_text}", Color=6)
         pad.refresh()
 
         return None
