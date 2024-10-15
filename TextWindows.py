@@ -347,6 +347,10 @@ def ProcessKeypress(Key):
 
 
 def main(stdscr):
+
+    # Initialize curses
+    stdscr=curses.initscr()
+
     # Initialization
     stdscr.clear()
     curses.noecho()
@@ -380,15 +384,16 @@ def main(stdscr):
     while True:
     
         # Handle other keys if necessary
-        ProcessKeypress(Key)
-        if (Key != ''):
+        Key = PollKeyboard()
+        #ProcessKeypress(Key)
+        if (Key == "P"):
           ToPrint = "Key: " + Key
           pad.PadPrint(ToPrint,Color=4, TimeStamp=True)
         #window.ScrollPrint(Key, Color=3, TimeStamp=True)
         # Refresh custom windows/pads after handling input
         #window.refresh()
 
-        pad.refresh()
+          pad.refresh()
 
     # No manual cleanup needed with curses.wrapper()
 
