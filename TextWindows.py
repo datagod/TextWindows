@@ -44,138 +44,6 @@ import time
 import sys
 import inspect
 
-class TextWindow(object):
-    def __init__(self, name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor, TitleColor):
-        max_y, max_x = curses.LINES - 1, curses.COLS - 1
-        self.rows = min(rows, max_y - y1)
-        self.columns = min(columns, max_x - x1)
-
-        if self.rows <= 0 or self.columns <= 0:
-            raise ValueError("Window size exceeds terminal size. Please expand your terminal.")
-
-        self.name = name
-        self.y1 = y1
-        self.x1 = x1
-        self.y2 = y2
-        self.x2 = x2
-        self.ShowBorder = ShowBorder
-        self.BorderColor = BorderColor  # pre-defined text colors 1-7
-        try:
-            self.window = curses.newwin(self.rows, self.columns, self.y1, self.x1)
-        except curses.error:
-            raise ValueError("Failed to create a new window. Check if terminal size is sufficient.")
-        
-        self.CurrentRow = 1
-        self.StartColumn = 1
-        self.DisplayRows = self.rows  # we will modify this later, based on if we show borders or not
-        self.DisplayColumns = self.columns  # we will modify this later, based on if we show borders or not
-        self.PreviousLineText = ""
-        self.PreviousLineRow = 0
-        self.PreviousLineColor = 2
-        self.Title = ""
-        self.TitleColor = TitleColor
-
-        if self.ShowBorder == 'Y':
-            self.CurrentRow = 1
-            self.StartColumn = 1
-            self.DisplayRows = self.rows - 2
-            self.DisplayColumns = self.columns - 2
-            self.window.attron(curses.color_pair(BorderColor))
-            self.window.border()
-            self.window.attroff(curses.color_pair(BorderColor))
-            # self.window.refresh()
-        else:
-            self.CurrentRow = 0
-            self.StartColumn = 0
-
-    def ScrollPrint(self, PrintLine, Color=2, TimeStamp=False, BoldLine=True):
-        current_time = datetime.now().strftime("%H:%M:%S")
-
-        if TimeStamp:
-            PrintLine = current_time + ": {}".format(PrintLine)
-
-        PrintLine = PrintLine.expandtabs(4)
-        PrintableString = PrintLine[0:self.DisplayColumns]
-        RemainingString = PrintLine[self.DisplayColumns:]
-
-        try:
-            while len(PrintableString) > 0:
-                PrintableString = PrintableString.ljust(self.DisplayColumns, ' ')
-                self.window.attron(curses.color_pair(self.PreviousLineColor))
-                self.window.addstr(self.PreviousLineRow, self.StartColumn, self.PreviousLineText)
-                self.window.attroff(curses.color_pair(self.PreviousLineColor))
-
-                if BoldLine:
-                    self.window.attron(curses.color_pair(Color))
-                    self.window.addstr(self.CurrentRow, self.StartColumn, PrintableString, curses.A_BOLD)
-                    self.window.attroff(curses.color_pair(Color))
-                else:
-                    self.window.attron(curses.color_pair(Color))
-                    self.window.addstr(self.CurrentRow, self.StartColumn, PrintableString)
-                    self.window.attroff(curses.color_pair(Color))
-
-                self.PreviousLineText = PrintableString
-                self.PreviousLineColor = Color
-                self.PreviousLineRow = self.CurrentRow
-                self.CurrentRow = self.CurrentRow + 1
-
-                PrintableString = RemainingString[0:self.DisplayColumns]
-                RemainingString = RemainingString[self.DisplayColumns:]
-
-            if self.CurrentRow > (self.DisplayRows):
-                if self.ShowBorder == 'Y':
-                    self.CurrentRow = 1
-                else:
-                    self.CurrentRow = 0
-
-            # Do not refresh here
-            # self.window.refresh()
-
-        except Exception as ErrorMessage:
-            TraceMessage = traceback.format_exc()
-            AdditionalInfo = "PrintLine: {}".format(PrintLine)
-            self.ErrorHandler(ErrorMessage, TraceMessage, AdditionalInfo)
-
-    def DisplayTitle(self):
-        try:
-            Title = self.Title[0:self.DisplayColumns - 3]
-            self.window.attron(curses.color_pair(self.TitleColor))
-            if self.rows > 2:
-                self.window.addstr(0, 2, Title)
-            else:
-                print("ERROR - You cannot display title on a window smaller than 3 rows")
-            self.window.attroff(curses.color_pair(self.TitleColor))
-            # self.window.refresh()
-
-        except Exception as ErrorMessage:
-            TraceMessage = traceback.format_exc()
-            AdditionalInfo = "Title: " + Title
-            self.ErrorHandler(ErrorMessage, TraceMessage, AdditionalInfo)
-
-    def Clear(self):
-        self.window.erase()
-        self.window.attron(curses.color_pair(self.BorderColor))
-        self.window.border()
-        self.window.attroff(curses.color_pair(self.BorderColor))
-        self.DisplayTitle()
-        if self.ShowBorder == 'Y':
-            self.CurrentRow = 1
-            self.StartColumn = 1
-        else:
-            self.CurrentRow = 0
-            self.StartColumn = 0
-
-    def refresh(self):
-        self.window.refresh()
-
-    def ErrorHandler(self, ErrorMessage, TraceMessage, AdditionalInfo):
-        print("ERROR - An error occurred in TextWindow class.")
-        print(ErrorMessage)
-        print("TRACE")
-        print(TraceMessage)
-        if AdditionalInfo:
-            print("Additional info:", AdditionalInfo)
-
 class TextPad(object):
     def __init__(self, name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor):
         max_y, max_x = curses.LINES - 1, curses.COLS - 1
@@ -260,102 +128,56 @@ class TextPad(object):
         if AdditionalInfo:
             print("Additional info:", AdditionalInfo)
 
-def ErrorHandler(ErrorMessage, TraceMessage, AdditionalInfo):
-    # Generic error handler function
-    CallingFunction = inspect.stack()[1][3]
-    print("\n\n--------------------------------------------------------------")
-    print("ERROR - Function ({} ) has encountered an error.".format(CallingFunction))
-    print(ErrorMessage)
-    print("\n\nTRACE")
-    print(TraceMessage)
-    if AdditionalInfo != "":
-        print("\n\nAdditional info:", AdditionalInfo)
-    print("\n\n--------------------------------------------------------------")
-    time.sleep(1)
-    sys.exit('Goodbye for now...')
 
+# Global variable to hold the typed text
+typed_text = ""
 
-def GoToSleep(TimeToSleep):
-    for i in range(0, (TimeToSleep * 10)):
-        PollKeyboard()
-        time.sleep(0.1)
-
-
-def PollKeyboard():
-    global stdscr
-    ReturnChar = ""
-    c = ""
-    curses.noecho()
+def PollKeyboard(stdscr):
+    # Get key press (polling)
     try:
-        c = chr(stdscr.getch())
+        c = stdscr.getch()
+        if c != curses.ERR:
+            return c  # Return the pressed key
+        else:
+            return None
     except Exception as ErrorMessage:
-        c = ""
-    if c != "":
-        OutputLine = "Key Pressed: " + c
-        ProcessKeypress(c)
-    return ReturnChar
+        traceback.print_exc()
+        return None
 
+def ProcessKeypress(c, pad):
+    global typed_text
 
-def ProcessKeypress(Key):
-  global stdscr
-  count  = 0
+    try:
+        if c == 27:  # Escape key to exit
+            return "EXIT"
 
-  OutputLine = "KEYPRESS: [" + str(Key) + "]"
-  # c = clear screen
-  # i = get node info
-  # l = show system LOGS (dmesg)
-  # n = show all nodes in mesh
-  # p = pause
-  # q = quit
-  # r = reboot
-  # s = Send message
-  # T = test messages
-  
+        elif c == 10:  # Enter key, print typed text to pad
+            pad.PadPrint(typed_text, Color=3, TimeStamp=True)
+            typed_text = ""
 
-    
-  if (Key == "p" or Key == " "):
-    PauseOutput = not (PauseOutput)
-    #if (PauseOutput == True):
-      #Window2.ScrollPrint("Pausing output",2)
-      #StatusWindow.WindowPrint(0,0,"** Output SLOW - press SPACE again to cancel **",1)
-      #PrintSleep = PrintSleep * 3
+        elif c == 8 or c == 127:  # Backspace key
+            typed_text = typed_text[:-1]
 
-    #else:
-      #Window2.ScrollPrint("Resuming output",2)
-      #StatusWindow.WindowPrint(0,0," ",3)
-      #PrintSleep = OldPrintSleep
-      #StatusWindow.ScrollPrint("",2)
+        elif 0 <= c <= 255:
+            typed_text += chr(c)
 
+        # Display the currently typed text in the pad
+        pad.PadPrint(f"Typed so far: {typed_text}", Color=6)
+        pad.refresh()
 
+        return None
 
-#  elif (Key == "i"):
-#    Window4.Clear()
-#    GetMyNodeInfo(interface)
-
-#  elif (Key == "l"):
-#    Pad1.Clear()
-#    DisplayLogs(0.01)
-
-#  elif (Key == "n"):
-#    Pad1.Clear()
-#    DisplayNodes(interface)
-
-#  elif (Key == "q"):
-#    FinalCleanup(stdscr)
-#    exit()
-
-
+    except Exception as ErrorMessage:
+        traceback.print_exc()
+        return None
 
 def main(stdscr):
-
     # Initialize curses
-    stdscr=curses.initscr()
-
-    # Initialization
-    stdscr.clear()
     curses.noecho()
     curses.cbreak()
     curses.curs_set(0)
+    stdscr.nodelay(1)  # Non-blocking input
+    stdscr.keypad(1)
 
     # Initialize colors
     curses.start_color()
@@ -367,35 +189,18 @@ def main(stdscr):
     curses.init_pair(6, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
 
-    # Create TextWindow and TextPad
-    #window = TextWindow('ExampleWindow', 10, 40, 0, 0, 10, 40, 'Y', 2, 2)
-    #window.ScrollPrint("Hello, World!", Color=3, TimeStamp=True)
-
-    pad = TextPad('ExamplePad', 100, 40, 0, 0, 110, 50, 'N', 2)
+    # Create TextPad
+    pad = TextPad('ExamplePad', 100, 80, 0, 0, 110, 90, 'Y', 2)
     pad.PadPrint("This is a long text to be printed in a pad.", Color=4, TimeStamp=True)
     pad.PadPrint("Another line in the pad to show scrolling capability.", Color=5, TimeStamp=True)
-
-    # Refresh custom windows/pads
-    #window.refresh()
     pad.refresh()
 
-    Key = ''
-
     while True:
-    
-        # Handle other keys if necessary
-        Key = PollKeyboard()
-        #ProcessKeypress(Key)
-        if (Key == "P"):
-          ToPrint = "Key: " + Key
-          pad.PadPrint(ToPrint,Color=4, TimeStamp=True)
-        #window.ScrollPrint(Key, Color=3, TimeStamp=True)
-        # Refresh custom windows/pads after handling input
-        #window.refresh()
-
-          pad.refresh()
-
-    # No manual cleanup needed with curses.wrapper()
+        c = PollKeyboard(stdscr)  # Poll the keyboard for input
+        if c is not None:
+            action = ProcessKeypress(c, pad)  # Handle the keypress
+            if action == "EXIT":
+                break  # Exit if "ESC" key is pressed
 
 # Start the curses application
 curses.wrapper(main)
