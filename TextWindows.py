@@ -44,6 +44,136 @@ import time
 import sys
 import inspect
 
+
+
+class TextWindow(object):
+    def __init__(self, name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor, TitleColor):
+        max_y, max_x = curses.LINES - 1, curses.COLS - 1
+        self.rows = min(rows, max_y - y1)
+        self.columns = min(columns, max_x - x1)
+
+        if self.rows <= 0 or self.columns <= 0:
+            raise ValueError("Window size exceeds terminal size. Please expand your terminal.")
+
+        self.name = name
+        self.y1 = y1
+        self.x1 = x1
+        self.y2 = y2
+        self.x2 = x2
+        self.ShowBorder = ShowBorder
+        self.BorderColor = BorderColor  # pre-defined text colors 1-7
+        try:
+            self.window = curses.newwin(self.rows, self.columns, self.y1, self.x1)
+        except curses.error:
+            raise ValueError("Failed to create a new window. Check if terminal size is sufficient.")
+        
+        self.CurrentRow = 1
+        self.StartColumn = 1
+        self.DisplayRows = self.rows  # We will modify this later, based on if we show borders or not
+        self.DisplayColumns = self.columns  # We will modify this later, based on if we show borders or not
+        self.PreviousLineText = ""
+        self.PreviousLineRow = 0
+        self.PreviousLineColor = 2
+        self.Title = ""
+        self.TitleColor = TitleColor
+
+        if self.ShowBorder == 'Y':
+            self.CurrentRow = 1
+            self.StartColumn = 1
+            self.DisplayRows = self.rows - 2
+            self.DisplayColumns = self.columns - 2
+            self.window.attron(curses.color_pair(BorderColor))
+            self.window.border()
+            self.window.attroff(curses.color_pair(BorderColor))
+        else:
+            self.CurrentRow = 0
+            self.StartColumn = 0
+
+    def ScrollPrint(self, PrintLine, Color=2, TimeStamp=False, BoldLine=True):
+        current_time = datetime.now().strftime("%H:%M:%S")
+
+        if TimeStamp:
+            PrintLine = current_time + ": {}".format(PrintLine)
+
+        PrintLine = PrintLine.expandtabs(4)
+        PrintableString = PrintLine[0:self.DisplayColumns]
+        RemainingString = PrintLine[self.DisplayColumns:]
+
+        try:
+            while len(PrintableString) > 0:
+                PrintableString = PrintableString.ljust(self.DisplayColumns, ' ')
+                self.window.attron(curses.color_pair(self.PreviousLineColor))
+                self.window.addstr(self.PreviousLineRow, self.StartColumn, self.PreviousLineText)
+                self.window.attroff(curses.color_pair(self.PreviousLineColor))
+
+                if BoldLine:
+                    self.window.attron(curses.color_pair(Color))
+                    self.window.addstr(self.CurrentRow, self.StartColumn, PrintableString, curses.A_BOLD)
+                    self.window.attroff(curses.color_pair(Color))
+                else:
+                    self.window.attron(curses.color_pair(Color))
+                    self.window.addstr(self.CurrentRow, self.StartColumn, PrintableString)
+                    self.window.attroff(curses.color_pair(Color))
+
+                self.PreviousLineText = PrintableString
+                self.PreviousLineColor = Color
+                self.PreviousLineRow = self.CurrentRow
+                self.CurrentRow = self.CurrentRow + 1
+
+                PrintableString = RemainingString[0:self.DisplayColumns]
+                RemainingString = RemainingString[self.DisplayColumns:]
+
+            if self.CurrentRow > (self.DisplayRows):
+                if self.ShowBorder == 'Y':
+                    self.CurrentRow = 1
+                else:
+                    self.CurrentRow = 0
+
+        except Exception as ErrorMessage:
+            TraceMessage = traceback.format_exc()
+            AdditionalInfo = "PrintLine: {}".format(PrintLine)
+            self.ErrorHandler(ErrorMessage, TraceMessage, AdditionalInfo)
+
+    def DisplayTitle(self):
+        try:
+            Title = self.Title[0:self.DisplayColumns - 3]
+            self.window.attron(curses.color_pair(self.TitleColor))
+            if self.rows > 2:
+                self.window.addstr(0, 2, Title)
+            else:
+                print("ERROR - You cannot display title on a window smaller than 3 rows")
+            self.window.attroff(curses.color_pair(self.TitleColor))
+
+        except Exception as ErrorMessage:
+            TraceMessage = traceback.format_exc()
+            AdditionalInfo = "Title: " + Title
+            self.ErrorHandler(ErrorMessage, TraceMessage, AdditionalInfo)
+
+    def Clear(self):
+        self.window.erase()
+        self.window.attron(curses.color_pair(self.BorderColor))
+        self.window.border()
+        self.window.attroff(curses.color_pair(self.BorderColor))
+        self.DisplayTitle()
+        if self.ShowBorder == 'Y':
+            self.CurrentRow = 1
+            self.StartColumn = 1
+        else:
+            self.CurrentRow = 0
+            self.StartColumn = 0
+
+    def refresh(self):
+        self.window.refresh()
+
+    def ErrorHandler(self, ErrorMessage, TraceMessage, AdditionalInfo):
+        print("ERROR - An error occurred in TextWindow class.")
+        print(ErrorMessage)
+        print("TRACE")
+        print(TraceMessage)
+        if AdditionalInfo:
+            print("Additional info:", AdditionalInfo)
+
+
 class TextPad(object):
     def __init__(self, name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor):
         max_y, max_x = curses.LINES - 1, curses.COLS - 1
@@ -189,18 +319,36 @@ def main(stdscr):
     curses.init_pair(6, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
 
-    # Create TextPad
-    pad = TextPad('ExamplePad', 100, 80, 0, 0, 110, 90, 'Y', 2)
-    pad.PadPrint("This is a long text to be printed in a pad.", Color=4, TimeStamp=True)
-    pad.PadPrint("Another line in the pad to show scrolling capability.", Color=5, TimeStamp=True)
+    typed_text = 'start'
+
+    # Create a TextWindow that will act as a container
+    #(name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor, TitleColor):
+    window = TextWindow('ContainerWindow', rows=20, columns=60, y1=0, x1=0, y2=20, x2=60, ShowBorder='Y', BorderColor=2, TitleColor=3)
+    window.refresh()
+
+    # Create a TextPad inside the TextWindow with some offsets
+    #(name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor):
+    pad = TextPad(name='TestPad', rows=15, columns=58, y1=1, x1=1, y2=16, x2=59, ShowBorder='Y',BorderColor=4)
+    pad.PadPrint("This is a text printed inside the pad within a window.", Color=5, TimeStamp=True)
+    pad.PadPrint("Another line inside the pad to show scrolling.", Color=6, TimeStamp=True)
     pad.refresh()
 
     while True:
-        c = PollKeyboard(stdscr)  # Poll the keyboard for input
-        if c is not None:
-            action = ProcessKeypress(c, pad)  # Handle the keypress
-            if action == "EXIT":
-                break  # Exit if "ESC" key is pressed
+        c = stdscr.getch()
+        if c == 27:  # Escape key to exit
+            break
+        elif c != curses.ERR:
+            if c == 10:  # Enter key
+                typed_text = chr(c)
+                pad.PadPrint(typed_text, Color=3, TimeStamp=True)
+                typed_text = ""
+            elif c == 8 or c == 127:  # Backspace key
+                typed_text = typed_text[:-1]
+            elif 0 <= c <= 255:
+                typed_text += chr(c)
 
-# Start the curses application
+            # Display the currently typed text
+            pad.PadPrint(f"{typed_text}", Color=6)
+            pad.refresh()
+
 curses.wrapper(main)
