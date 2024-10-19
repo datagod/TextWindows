@@ -47,10 +47,12 @@ import inspect
 
 
 class TextWindow(object):
-    def __init__(self, name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor, TitleColor):
+    def __init__(self, name, rows, columns, y1, x1, ShowBorder, BorderColor, TitleColor):
         max_y, max_x = curses.LINES - 1, curses.COLS - 1
         self.rows = min(rows, max_y - y1)
         self.columns = min(columns, max_x - x1)
+
+            
 
         if self.rows <= 0 or self.columns <= 0:
             raise ValueError("Window size exceeds terminal size. Please expand your terminal.")
@@ -58,8 +60,8 @@ class TextWindow(object):
         self.name = name
         self.y1 = y1
         self.x1 = x1
-        self.y2 = y2
-        self.x2 = x2
+        self.y2 = self.y1 + rows
+        self.x2 = self.x1 + rows
         self.ShowBorder = ShowBorder
         self.BorderColor = BorderColor  # pre-defined text colors 1-7
         try:
@@ -308,7 +310,7 @@ def main(stdscr):
     curses.curs_set(0)
     stdscr.nodelay(1)  # Non-blocking input
     stdscr.keypad(1)
-
+    
     # Initialize colors
     curses.start_color()
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
@@ -319,36 +321,68 @@ def main(stdscr):
     curses.init_pair(6, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
 
-    typed_text = 'start'
-
+    
+    curses.curs_set(0)
+    
     # Create a TextWindow that will act as a container
     #(name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor, TitleColor):
-    window = TextWindow('ContainerWindow', rows=20, columns=60, y1=0, x1=0, y2=20, x2=60, ShowBorder='Y', BorderColor=2, TitleColor=3)
+    window = TextWindow('StoryTime', rows=10, columns=42, y1=0, x1=0,  ShowBorder='Y', BorderColor=2, TitleColor=3)
+    window2 = TextWindow('ContainerWindow', rows=10, columns=20, y1=0, x1=43, ShowBorder='Y', BorderColor=2, TitleColor=4)
+    window.refresh()
+    window2.refresh()
+
+    
+    window.DisplayTitle()
+    window.ScrollPrint("This is a story all about how my life got flipped turned upside down.")
     window.refresh()
 
+    window.ScrollPrint("One")
+    time.sleep(0.25)
+    window.refresh()
+    window.ScrollPrint("Two")
+    time.sleep(0.25)
+    window.refresh()
+    window.ScrollPrint("Three")
+    time.sleep(0.25)
+    window.refresh()
+    window.ScrollPrint("Four")
+    time.sleep(0.25)
+    window.refresh()
+    window.ScrollPrint("Five")
+    time.sleep(0.25)
+    window.refresh()
+    
+    
+    window2.ScrollPrint("One")
+    time.sleep(0.25)
+    window2.refresh()
+    window2.ScrollPrint("Two")
+    time.sleep(0.25)
+    window2.refresh()
+    window2.ScrollPrint("Three")
+    time.sleep(0.25)
+    window2.refresh()
+    window2.ScrollPrint("Four")
+    time.sleep(0.25)
+    window2.refresh()
+    window2.ScrollPrint("Five")
+    time.sleep(0.25)
+    window2.refresh()
+    
+
+
+    
+    window2.ScrollPrint("12345678901234567890")
+    window.refresh()
+    time.sleep(5)
+    window.refresh()
+    
     # Create a TextPad inside the TextWindow with some offsets
     #(name, rows, columns, y1, x1, y2, x2, ShowBorder, BorderColor):
-    pad = TextPad(name='TestPad', rows=15, columns=58, y1=1, x1=1, y2=16, x2=59, ShowBorder='Y',BorderColor=4)
-    pad.PadPrint("This is a text printed inside the pad within a window.", Color=5, TimeStamp=True)
-    pad.PadPrint("Another line inside the pad to show scrolling.", Color=6, TimeStamp=True)
-    pad.refresh()
+    #pad = TextPad(name='TestPad', rows=10, columns=10, y1=10, x1=10, y2=20, x2=20, ShowBorder='Y',BorderColor=4)
+    #pad.PadPrint("This is a text printed inside the pad within a window.", Color=5, TimeStamp=True)
+    #pad.PadPrint("Another line inside the pad to show scrolling.", Color=6, TimeStamp=True)
+    #pad.refresh()
 
-    while True:
-        c = stdscr.getch()
-        if c == 27:  # Escape key to exit
-            break
-        elif c != curses.ERR:
-            if c == 10:  # Enter key
-                typed_text = chr(c)
-                pad.PadPrint(typed_text, Color=3, TimeStamp=True)
-                typed_text = ""
-            elif c == 8 or c == 127:  # Backspace key
-                typed_text = typed_text[:-1]
-            elif 0 <= c <= 255:
-                typed_text += chr(c)
-
-            # Display the currently typed text
-            pad.PadPrint(f"{typed_text}", Color=6)
-            pad.refresh()
-
+    
 curses.wrapper(main)
