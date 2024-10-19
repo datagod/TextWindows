@@ -46,6 +46,7 @@ import inspect
 
 
 
+
 class TextWindow(object):
     def __init__(self, name, rows, columns, y1, x1, ShowBorder, BorderColor, TitleColor):
         max_y, max_x = curses.LINES - 1, curses.COLS - 1
